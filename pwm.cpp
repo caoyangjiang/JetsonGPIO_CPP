@@ -1,13 +1,12 @@
 /**
- * @file gpio.h
+ * @file pwm.cpp
  * @author Caoyang Jiang (caoyangjiang@gmail.com)
  * @brief
  * @version 0.1
  * @date 2020-12-26
  *
- * @copyright
+ * @copyright Copyright (c) 2020, Caoyang Jiang
  *
- * Copyright (c) 2020, Caoyang Jiang
  * Copyright (c) 2012-2017 Ben Croston <ben@croston.org>.
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  *
@@ -29,32 +28,3 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-
-#pragma once
-
-#include <string>
-#include "pwm.h"
-#include "types.h"
-
-namespace jetson {
-
-class Gpio {
- public:
-  bool Detect(std::string* error_message = nullptr);
-  bool SetMode(BoardMode mode);
-  bool Setup(int pin_number, Direction direction, Signal initial_value);
-  void Cleanup();
-
-  BoardMode GetBoardMode() const;
-  BoardType GetBoardType() const;
-  std::string GetBoardName() const;
-
-  PWMController CreatePWMController(int pin_number, float frequency_hz,
-                                    float duty_cycle_percent);
-
- private:
-  BoardType type_ = BoardType::UNKNOWN;
-  ChannelData data_;
-};
-
-}  // namespace jetson
