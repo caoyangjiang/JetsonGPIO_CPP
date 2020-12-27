@@ -77,19 +77,19 @@ enum class Direction { OUT = 0, IN = 1 };
 
 enum class Signal { LOW = 0, HIGH = 1 };
 
-struct ChannelInformation {
+struct ChannelInfo {
   std::string channel;
   std::string gpio_chip_dir;
-  std::string chip_gpi;
+  int chip_gpio;
   std::string gpio;
   std::string gpio_name;
-  std::string pwm_chip_dir;
-  std::string pwm_id;
+  std::optional<std::string> pwm_chip_dir;
+  std::optional<int> chip_pwm_id;
 };
 
-using ChannelData = std::map<BoardMode, std::vector<ChannelInformation>>;
+using ChannelData = std::map<BoardMode, std::map<std::string, ChannelInfo>>;
 
-constexpr const char* BoardType2String(BoardType type) {
+constexpr inline const char* BoardType2String(BoardType type) {
   switch (type) {
     case BoardType::UNKNOWN:
       return "Unknow board type";
@@ -98,6 +98,10 @@ constexpr const char* BoardType2String(BoardType type) {
     case BoardType::JETSON_AGX_XAVIER:
       return "Jetson Agx Xavier";
   }
+}
+
+inline std::string PinNumber2String(int pin_num) {
+  return std::to_string(pin_num);
 }
 
 class BoardPinDef {

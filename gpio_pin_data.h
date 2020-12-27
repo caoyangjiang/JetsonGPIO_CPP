@@ -43,7 +43,7 @@ static const auto kNONE = std::nullopt;
 
 // ------ Definitions for board "Jetson Xavier" ------ //
 static const std::vector<PinDef> kJETSON_XAVIER_PIN_DEFS = {
-    {106, "2200000.gpio", 7, 4, "MCLK05", "SOC_GPIO42", kNONE, kNONE},
+    {134, "2200000.gpio", 7, 4, "MCLK05", "SOC_GPIO42", kNONE, kNONE},
     {140, "2200000.gpio", 11, 17, "UART1_RTS", "UART1_RTS", kNONE, kNONE},
     {63, "2200000.gpio", 12, 18, "I2S2_CLK", "DAP2_SCLK", kNONE, kNONE},
     {136, "2200000.gpio", 13, 27, "PWM01", "SOC_GPIO44", "32f0000.pwm", 0},

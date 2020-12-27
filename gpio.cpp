@@ -49,6 +49,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 #include "gpio_pin_data.h"
 
@@ -216,7 +217,66 @@ COMPATIBLE_DETECT_DONE:
     }
   }
 
+  auto create_gpio_id_name =
+      [&](int chip_relative_id, std::string gpio_name,
+          std::string gpio_chip_name) -> std::pair<int, std::string> {
+    std::pair<int, std::string> id_name;
+    auto chip_gpio_ngpio = gpio_chip_ngpio[gpio_chip_name];
+    id_name.first = gpio_chip_base[gpio_chip_name] + chip_relative_id;
+    if (gpio_name == "") {
+      id_name.second = "gpio" + std::to_string(id_name.first);
+    }
+
+    return id_name;
+  };
+
   // Final Step: gather all channel data
+  auto& board_mode_data = data_[BoardMode::BOARD];
+  for (const auto& x : kPinDefs) {
+    auto pin_number_str = PinNumber2String(x.board_pin_num);
+    board_mode_data[pin_number_str] = {pin_number_str,
+                                       gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+                                       x.chip_gpio_pin_num,
+                                       "",
+                                       "",
+                                       x.chip_pwm_sysfs_dir,
+                                       x.chip_pwm_id};
+  }
+
+  auto& bcm_mode_data = data_[BoardMode::BCM];
+  for (const auto& x : kPinDefs) {
+    auto pin_number_str = PinNumber2String(x.bcm_pin_num);
+    bcm_mode_data[pin_number_str] = {pin_number_str,
+                                     gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+                                     x.chip_gpio_pin_num,
+                                     "",
+                                     "",
+                                     x.chip_pwm_sysfs_dir,
+                                     x.chip_pwm_id};
+  }
+
+  auto& cvm_mode_data = data_[BoardMode::CVM];
+  for (const auto& x : kPinDefs) {
+    cvm_mode_data[x.cvm_pin_name] = {x.cvm_pin_name,
+                                     gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+                                     x.chip_gpio_pin_num,
+                                     "",
+                                     "",
+                                     x.chip_pwm_sysfs_dir,
+                                     x.chip_pwm_id};
+  }
+
+  auto& tegra_soc_mode_data = data_[BoardMode::TEGRA_SOC];
+  for (const auto& x : kPinDefs) {
+    tegra_soc_mode_data[x.tegra_soc_pin_name] = {
+        x.tegra_soc_pin_name,
+        gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+        x.chip_gpio_pin_num,
+        "",
+        "",
+        x.chip_pwm_sysfs_dir,
+        x.chip_pwm_id};
+  }
 
   return true;
 }
