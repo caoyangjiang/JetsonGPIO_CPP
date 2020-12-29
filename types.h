@@ -39,6 +39,11 @@
 
 namespace jetson {
 
+
+static const int kPullUpDown_Offset = 20;
+static const int kEdge_Offset = 30;
+static const std::string kSysfs_Root = "/sys/class/gpio";
+
 struct PinDef {
   int chip_gpio_pin_num;
   std::string chip_gpio_sysfs_dir;
@@ -69,15 +74,27 @@ enum class BoardType {
 
 enum class BoardMode {
   UNKNONW = 0,
-  BOARD,
-  BCM,
-  CVM,
-  TEGRA_SOC,
+  BOARD = 10,
+  BCM = 11,
+  CVM = 1000,
+  TEGRA_SOC = 1001,
 };
 
 enum class Direction { OUT = 0, IN = 1 };
 
 enum class Signal { LOW = 0, HIGH = 1 };
+
+enum class PullUpDown {
+  OFF = 0 + kPullUpDown_Offset,
+  DOWN = 1 + kPullUpDown_Offset,
+  UP = 2 + kPullUpDown_Offset,
+};
+
+enum class TriggerEdge {
+  RISING = 1 + kEdge_Offset,
+  FAILING = 2 + kEdge_Offset,
+  BOTH = 3 + kEdge_Offset,
+};
 
 struct ChannelInfo {
   std::string channel;
