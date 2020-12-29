@@ -63,6 +63,7 @@ enum class BoardType {
   UNKNOWN = 0,
   JETSON_XAVIER,
   JETSON_AGX_XAVIER,
+  JETSON_NANO,
 };
 
 enum class BoardMode {
