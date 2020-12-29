@@ -5,8 +5,9 @@
  * @version 0.1
  * @date 2020-12-26
  *
- * @copyright Copyright (c) 2020, Caoyang Jiang
- *
+ * @copyright 
+ * 
+ * Copyright (c) 2020, Caoyang Jiang
  * Copyright (c) 2012-2017 Ben Croston <ben@croston.org>.
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  *
