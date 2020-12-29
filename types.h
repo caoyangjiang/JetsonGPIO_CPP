@@ -82,7 +82,7 @@ struct ChannelInfo {
   std::string channel;
   std::string gpio_chip_dir;
   int chip_gpio;
-  std::string gpio;
+  int gpio;
   std::string gpio_name;
   std::optional<std::string> pwm_chip_dir;
   std::optional<int> chip_pwm_id;
