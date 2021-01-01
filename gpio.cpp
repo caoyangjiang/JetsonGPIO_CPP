@@ -265,4 +265,45 @@ COMPATIBLE_DETECT_DONE:
   return true;
 }
 
+bool Gpio::SetMode(BoardMode mode) {
+  if(curr_board_mode_ != BoardMode::UNKNONW) {
+    return false;
+  }
+
+  curr_board_mode_ = mode;
+  return true;
+}
+
+bool Gpio::Setup(int pin_number, Direction direction, Signal initial_value) {
+  if(curr_board_mode_ == BoardMode::UNKNONW) {
+    return false;
+  }
+
+  auto& channel_data = data_[curr_board_mode_];
+
+  // validation needed here
+  auto& channel_info = channel_data[std::to_string(pin_number)];
+
+#ifdef DEBUG
+  std::cout << "[info]: setup channel " << channel_info.channel << std::endl;
+#endif 
+
+  return true;
+}
+
+void Gpio::Cleanup() {}
+
+BoardMode Gpio::GetBoardMode() const {
+  return curr_board_mode_;
+}
+
+BoardType Gpio::GetBoardType() const {
+  return type_;
+}
+
+std::string Gpio::GetBoardName() const {
+  return BoardType2String(type_);
+}
+
+
 }  // namespace jetson

@@ -116,6 +116,8 @@ constexpr inline const char* BoardType2String(BoardType type) {
       return "Jetson Xavier";
     case BoardType::JETSON_AGX_XAVIER:
       return "Jetson Agx Xavier";
+    case BoardType::JETSON_NANO:
+      return "Jetson Nano";
   }
 }
 

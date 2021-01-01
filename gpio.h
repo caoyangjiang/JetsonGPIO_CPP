@@ -53,8 +53,12 @@ class Gpio {
                                     float duty_cycle_percent);
 
  private:
+  void ExportGpio(const ChannelInfo& info);
+
+ private:
   BoardType type_ = BoardType::UNKNOWN;
   ChannelData data_;
+  BoardMode curr_board_mode_ = BoardMode::UNKNONW;
 };
 
 }  // namespace jetson

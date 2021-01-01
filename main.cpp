@@ -9,18 +9,28 @@
 
 int main() {
   jetson::Gpio gpio;
-  gpio.Detect();
+  if(!gpio.Detect()) {
+    std::cout << "[ERROR]: Board detection failed! Can't find board type." << std::endl;
+    return -1;
+  }
 
-  // std::map<jetson::BoardType, int> kPinNum = {
-  //   {jetson::BoardType::JETSON_AGX_XAVIER, 18},
-  //   {jetson::BoardType::JETSON_NANO, 33}
-  // };
+  std::map<jetson::BoardType, int> kPinNum = {
+    {jetson::BoardType::JETSON_AGX_XAVIER, 18},
+    {jetson::BoardType::JETSON_NANO, 33}
+  };
   
   // Board pin-numbering scheme  
-  // Gpio.SetMode(jetson::Gpio::BoardMode::BOARD);
+  if(!gpio.SetMode(jetson::BoardMode::BOARD)) {
+    std::cout << "[ERROR]: Set board mode failed! Can't reassign board mode." << std::endl;
+    return -1;
+  }
 
   // Set pin as an output pin with optional initial state of HIGH
-  // Gpio.Setup(kPinNum[Gpio.GetBoardType()], jetson::Direction::OUT, jetson::Signal::HIGH);
+  if(!gpio.Setup(kPinNum[gpio.GetBoardType()], jetson::Direction::OUT, jetson::Signal::HIGH))
+  {
+    std::cout << "[ERROR]: Gpio setup failed." << std::endl;
+    return -1;
+  }
 
   // std::atomic_bool stop = false;
   // auto result = std::async([&](){
