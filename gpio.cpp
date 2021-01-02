@@ -323,7 +323,9 @@ JResult Gpio::Setup(std::string channel, Direction direction,
   return JOK;
 }
 
-void Gpio::Cleanup() {}
+void Gpio::TearDown(std::string channel) { UnexportGpio(channel); }
+
+void Gpio::TearDown() {}
 
 ChannelInfo Gpio::GetChannelInfo(BoardMode mode, std::string channel) const {
   return data_.at(mode).at(channel);
@@ -340,30 +342,66 @@ JResult Gpio::ExportGpio(std::string channel, Direction direction) {
   config_[channel].channel_info = channel_info;
   config_[channel].direction = direction;
 
-  // export channel by writing into export file
-  if (!fs::exists(kSysfs_Root + "/" + channel_info.gpio_name)) {
-    std::ofstream file(kSysfs_Root + "/");
+  std::cout << static_cast<int>(curr_board_mode_) << channel << std::endl;
+  const std::string kEXPORT_FILE = kSysfs_Root + "/export";
+  const std::string kGPIO_DIR = kSysfs_Root + "/" + channel_info.gpio_name;
+  const std::string kGPIO_DIRECTION_FILE =
+      kSysfs_Root + "/" + channel_info.gpio_name + "/direction";
+  const std::string kGPIO_VALUE_FILE =
+      kSysfs_Root + "/" + channel_info.gpio_name + "/value";
+
+  std::cout << kGPIO_DIR << std::endl;
+  std::cout << kEXPORT_FILE << std::endl;
+
+  // Export channel by writing into export file
+  if (!fs::exists(kGPIO_DIR)) {
+    std::ofstream file(kEXPORT_FILE);
     if (!file) return JResult{"open \"Export\" file failed. ", false};
     std::string gpio_num_str = std::to_string(channel_info.gpio);
     file.write(gpio_num_str.c_str(), gpio_num_str.size());
     file.close();
 
     // It takes time for gpioxxx to show up
+    int safe_counter = 100;  // try up to one second
+    bool gpio_created = false;
     do {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      std::fstream check_fs(kSysfs_Root + "/" + channel_info.gpio_name + "/" +
-                            "direction");
-      if (check_fs) break;
-    } while (true);
+      std::fstream check_fs(kGPIO_DIRECTION_FILE);
+      if (check_fs) {
+        gpio_created = true;
+        break;
+      } else {
+        safe_counter--;
+      }
+    } while (safe_counter > 0);
 
-    config_[channel].file_d.open(kSysfs_Root + "/" + channel_info.gpio_name +
-                                 "/" + "direction");
-    config_[channel].file_v.open(kSysfs_Root + "/" + channel_info.gpio_name +
-                                 "/" + "value");
+    if (!gpio_created) {
+      UnexportGpio(channel);
+      return JResult{"Gpio exported but gpio directory was not created.",
+                     false};
+    }
+
+    config_[channel].file_d.open(kGPIO_DIRECTION_FILE);
+    config_[channel].file_v.open(kGPIO_VALUE_FILE);
   }
+
   return JOK;
 }
 
-void Gpio::UnexportGpio(const ChannelInfo& info) {}
+void Gpio::UnexportGpio(std::string channel) {
+  if (config_.find(channel) == config_.end()) {
+    return;
+  }
+
+  const auto& channel_info = data_[curr_board_mode_][channel];
+
+  config_[channel].file_d.close();
+  config_[channel].file_v.close();
+
+  std::ofstream file(kSysfs_Root + "/unexport");
+  std::string gpio_num_str = std::to_string(channel_info.gpio);
+  file.write(gpio_num_str.c_str(), gpio_num_str.size());
+  file.close();
+}
 
 }  // namespace jetson

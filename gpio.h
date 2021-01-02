@@ -48,7 +48,8 @@ class Gpio {
   JResult Setup(std::string channel, Direction direction,
                 Signal initial_value = Signal::LOW, Pull pull = Pull::OFF);
 
-  void Cleanup();
+  void TearDown(std::string channel);
+  void TearDown();
 
   ChannelInfo GetChannelInfo(BoardMode mode, std::string channel) const;
   BoardMode GetBoardMode() const;
@@ -60,7 +61,7 @@ class Gpio {
 
  private:
   JResult ExportGpio(std::string channel, Direction direction);
-  void UnexportGpio(const ChannelInfo& info);
+  void UnexportGpio(std::string channel);
 
  private:
   BoardType type_ = BoardType::UNKNOWN;

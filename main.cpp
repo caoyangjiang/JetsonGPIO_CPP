@@ -17,15 +17,9 @@ int main() {
   }
 
   PrintChannelInfo(gpio.GetChannelInfo(jetson::BoardMode::BOARD, "18"));
-  PrintChannelInfo(gpio.GetChannelInfo(jetson::BoardMode::BCM, "24"));
-  PrintChannelInfo(gpio.GetChannelInfo(jetson::BoardMode::CVM, "GPIO35"));
-  PrintChannelInfo(
-      gpio.GetChannelInfo(jetson::BoardMode::TEGRA_SOC, "SOC_GPIO12"));
-
-  PrintChannelInfo(gpio.GetChannelInfo(jetson::BoardMode::BOARD, "16"));
 
   std::map<jetson::BoardType, std::string> kPinNum = {
-      {jetson::BoardType::JETSON_AGX_XAVIER, "18"},
+      {jetson::BoardType::JETSON_XAVIER, "18"},
       {jetson::BoardType::JETSON_NANO, "33"}};
 
   // Board pin-numbering scheme
@@ -36,14 +30,17 @@ int main() {
   }
 
   // Set pin as an output pin with optional initial state of HIGH
-  // auto setup_result = gpio.Setup(kPinNum[gpio.GetBoardType()],
-  //                                jetson::Direction::OUT,
-  //                                jetson::Signal::HIGH);
-  // if (!setup_result.second) {
-  //   std::cout << "[ERROR]: Gpio setup failed with." << setup_result.first
-  //             << std::endl;
-  //   return -1;
-  // }
+  auto setup_result = gpio.Setup(kPinNum[gpio.GetBoardType()],
+                                 jetson::Direction::OUT, jetson::Signal::HIGH);
+  if (!setup_result.second) {
+    std::cout << "[ERROR]: Gpio setup failed with." << setup_result.first
+              << std::endl;
+    return -1;
+  }
+
+  std::this_thread::sleep_for(std::chrono::seconds(5));
+
+  gpio.TearDown(kPinNum[gpio.GetBoardType()]);
 
   // std::atomic_bool stop = false;
   // auto result = std::async([&](){
