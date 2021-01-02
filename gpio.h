@@ -41,10 +41,16 @@ namespace jetson {
 class Gpio {
  public:
   bool Detect(std::string* error_message = nullptr);
-  bool SetMode(BoardMode mode);
-  bool Setup(int pin_number, Direction direction, Signal initial_value);
+
+  JResult SetMode(BoardMode mode);
+  // JResult Setup(std::string channel, Direction direction,
+  //               Signal initial_value = Signal::LOW);
+  JResult Setup(std::string channel, Direction direction,
+                Signal initial_value = Signal::LOW, Pull pull = Pull::OFF);
+
   void Cleanup();
 
+  ChannelInfo GetChannelInfo(BoardMode mode, std::string channel) const;
   BoardMode GetBoardMode() const;
   BoardType GetBoardType() const;
   std::string GetBoardName() const;
@@ -53,12 +59,14 @@ class Gpio {
                                     float duty_cycle_percent);
 
  private:
-  void ExportGpio(const ChannelInfo& info);
+  JResult ExportGpio(std::string channel, Direction direction);
+  void UnexportGpio(const ChannelInfo& info);
 
  private:
   BoardType type_ = BoardType::UNKNOWN;
   ChannelData data_;
   BoardMode curr_board_mode_ = BoardMode::UNKNONW;
+  ChannelConfigurations config_;
 };
 
 }  // namespace jetson

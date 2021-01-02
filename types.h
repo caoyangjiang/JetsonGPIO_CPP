@@ -5,8 +5,8 @@
  * @version 0.1
  * @date 2020-12-26
  *
- * @copyright 
- * 
+ * @copyright
+ *
  * Copyright (c) 2020, Caoyang Jiang
  * Copyright (c) 2012-2017 Ben Croston <ben@croston.org>.
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <fstream>
 #include <map>
 #include <optional>
 #include <string>
@@ -39,8 +40,12 @@
 
 namespace jetson {
 
+template <typename T>
+using Outcome = std::pair<std::string, T>;
+using JResult = Outcome<bool>;
+static const JResult JOK = JResult{"No Error", true};
 
-static const int kPullUpDown_Offset = 20;
+static const int kPull_Offset = 20;
 static const int kEdge_Offset = 30;
 static const std::string kSysfs_Root = "/sys/class/gpio";
 
@@ -84,10 +89,10 @@ enum class Direction { OUT = 0, IN = 1 };
 
 enum class Signal { LOW = 0, HIGH = 1 };
 
-enum class PullUpDown {
-  OFF = 0 + kPullUpDown_Offset,
-  DOWN = 1 + kPullUpDown_Offset,
-  UP = 2 + kPullUpDown_Offset,
+enum class Pull {
+  OFF = 0 + kPull_Offset,
+  DOWN = 1 + kPull_Offset,
+  UP = 2 + kPull_Offset,
 };
 
 enum class TriggerEdge {
@@ -108,6 +113,15 @@ struct ChannelInfo {
 
 using ChannelData = std::map<BoardMode, std::map<std::string, ChannelInfo>>;
 
+struct ChannelConfiguration {
+  ChannelInfo channel_info;
+  Direction direction;
+  std::ofstream file_d;
+  std::fstream file_v;
+};
+
+using ChannelConfigurations = std::map<std::string, ChannelConfiguration>;
+
 constexpr inline const char* BoardType2String(BoardType type) {
   switch (type) {
     case BoardType::UNKNOWN:
@@ -125,25 +139,25 @@ inline std::string PinNumber2String(int pin_num) {
   return std::to_string(pin_num);
 }
 
-class BoardPinDef {
- public:
-  explicit BoardPinDef(BoardType type);
+// class BoardPinDef {
+//  public:
+//   explicit BoardPinDef(BoardType type);
 
-  int GetChipGpioPinNumber() const;
-  std::string GetChipGpioSysfsDir() const;
-  int GetBoardPinNumber() const;
-  int GetBcmPinNumber() const;
-  const std::string& GetCvmPinName() const;
-  const std::string& GetTegraSocPinName() const;
+//   int GetChipGpioPinNumber() const;
+//   std::string GetChipGpioSysfsDir() const;
+//   int GetBoardPinNumber() const;
+//   int GetBcmPinNumber() const;
+//   const std::string& GetCvmPinName() const;
+//   const std::string& GetTegraSocPinName() const;
 
-  bool HaveChipPwmSysfsDir() const;
-  bool HaveChipPwmId() const;
+//   bool HaveChipPwmSysfsDir() const;
+//   bool HaveChipPwmId() const;
 
-  const std::string& GetChipPwmSysfsDir() const;
-  const std::string& GetChipPwmId() const;
+//   const std::string& GetChipPwmSysfsDir() const;
+//   const std::string& GetChipPwmId() const;
 
- private:
-  BoardType board_type_;
-};
+//  private:
+//   BoardType board_type_;
+// };
 
 }  // namespace jetson

@@ -5,8 +5,8 @@
  * @version 0.1
  * @date 2020-12-26
  *
- * @copyright 
- * 
+ * @copyright
+ *
  * Copyright (c) 2020, Caoyang Jiang
  * Copyright (c) 2012-2017 Ben Croston <ben@croston.org>.
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
@@ -49,7 +49,7 @@ static const std::vector<PinDef> kJETSON_XAVIER_PIN_DEFS = {
     {63, "2200000.gpio", 12, 18, "I2S2_CLK", "DAP2_SCLK", kNONE, kNONE},
     {136, "2200000.gpio", 13, 27, "PWM01", "SOC_GPIO44", "32f0000.pwm", 0},
     {105, "2200000.gpio", 15, 22, "GPIO27", "SOC_GPIO54", "3280000.pwm", 0},
-    {8, "2200000.gpio", 16, 23, "GPIO8", "CAN1_STB", kNONE, kNONE},
+    {8, "c2f0000.gpio", 16, 23, "GPIO8", "CAN1_STB", kNONE, kNONE},
     {56, "2200000.gpio", 18, 24, "GPIO35", "SOC_GPIO12", "32c0000.pwm", 0},
     {205, "2200000.gpio", 19, 10, "SPI1_MOSI", "SPI1_MOSI", kNONE, kNONE},
     {204, "2200000.gpio", 21, 9, "SPI1_MISO", "SPI1_MISO", kNONE, kNONE},
@@ -57,13 +57,13 @@ static const std::vector<PinDef> kJETSON_XAVIER_PIN_DEFS = {
     {203, "2200000.gpio", 23, 11, "SPI1_CLK", "SPI1_CLK", kNONE, kNONE},
     {206, "2200000.gpio", 24, 8, "SPI_CS0_N", "SPI_CS0_N", kNONE, kNONE},
     {207, "2200000.gpio", 26, 7, "SPI_CS1_N", "SPI_CS1_N", kNONE, kNONE},
-    {3, "2200000.gpio", 29, 5, "CAN0_DIN", "CAN0_DIN", kNONE, kNONE},
-    {2, "2200000.gpio", 31, 6, "CAN0_DOUT", "CAN0_DOUT", kNONE, kNONE},
-    {9, "2200000.gpio", 32, 12, "GPIO9", "CAN1_EN", kNONE, kNONE},
-    {0, "2200000.gpio", 33, 13, "CAN1_DOUT", "CAN1_DOUT", kNONE, kNONE},
+    {3, "c2f0000.gpio", 29, 5, "CAN0_DIN", "CAN0_DIN", kNONE, kNONE},
+    {2, "c2f0000.gpio", 31, 6, "CAN0_DOUT", "CAN0_DOUT", kNONE, kNONE},
+    {9, "c2f0000.gpio", 32, 12, "GPIO9", "CAN1_EN", kNONE, kNONE},
+    {0, "c2f0000.gpio", 33, 13, "CAN1_DOUT", "CAN1_DOUT", kNONE, kNONE},
     {66, "2200000.gpio", 35, 19, "I2S2_FS", "DAP2_FS", kNONE, kNONE},
     {141, "2200000.gpio", 36, 16, "UART1_CTS", "UART1_CTS", kNONE, kNONE},
-    {1, "2200000.gpio", 37, 26, "CAN1_DIN", "CAN1_DIN", kNONE, kNONE},
+    {1, "c2f0000.gpio", 37, 26, "CAN1_DIN", "CAN1_DIN", kNONE, kNONE},
     {65, "2200000.gpio", 38, 20, "I2S2_DIN", "DAP2_DIN", kNONE, kNONE},
     {64, "2200000.gpio", 40, 21, "I2S2_DOUT", "DAP2_DOUT", kNONE, kNONE}};
 
@@ -108,11 +108,10 @@ static const std::vector<PinDef> kJETSON_NANO_PIN_DEFS = {
     {78, "6000d000.gpio", 40, 21, "I2S0_DOUT", "DAP4_DOUT", kNONE, kNONE}};
 
 static const std::vector<std::string> kJETSON_NANO_COMPATIBLES = {
-    "nvidia,p3450-0000","nvidia,p3450-0002","nvidia,jetson-nano"};
+    "nvidia,p3450-0000", "nvidia,p3450-0002", "nvidia,jetson-nano"};
 
 static const BoardInformation kJETSON_NANO_BOARD_INFORMATION{
     1, 2048, -1, "Jetson Nano", "NVIDIA", "ARM A57", 3448};
-
 
 // For easy lookup
 static const std::map<BoardType, std::vector<PinDef>> kBoardPins = {

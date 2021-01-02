@@ -1,43 +1,55 @@
 
-#include "gpio.h"
-#include <thread>
-#include <map>
-#include <iostream>
+#include <atomic>
 #include <chrono>
 #include <functional>
-#include <atomic>
+#include <iostream>
+#include <map>
+#include <thread>
+#include "gpio.h"
+#include "utils.h"
 
 int main() {
   jetson::Gpio gpio;
-  if(!gpio.Detect()) {
-    std::cout << "[ERROR]: Board detection failed! Can't find board type." << std::endl;
+  if (!gpio.Detect()) {
+    std::cout << "[ERROR]: Board detection failed! Can't find board type."
+              << std::endl;
     return -1;
   }
 
-  std::map<jetson::BoardType, int> kPinNum = {
-    {jetson::BoardType::JETSON_AGX_XAVIER, 18},
-    {jetson::BoardType::JETSON_NANO, 33}
-  };
-  
-  // Board pin-numbering scheme  
-  if(!gpio.SetMode(jetson::BoardMode::BOARD)) {
-    std::cout << "[ERROR]: Set board mode failed! Can't reassign board mode." << std::endl;
+  PrintChannelInfo(gpio.GetChannelInfo(jetson::BoardMode::BOARD, "18"));
+  PrintChannelInfo(gpio.GetChannelInfo(jetson::BoardMode::BCM, "24"));
+  PrintChannelInfo(gpio.GetChannelInfo(jetson::BoardMode::CVM, "GPIO35"));
+  PrintChannelInfo(
+      gpio.GetChannelInfo(jetson::BoardMode::TEGRA_SOC, "SOC_GPIO12"));
+
+  PrintChannelInfo(gpio.GetChannelInfo(jetson::BoardMode::BOARD, "16"));
+
+  std::map<jetson::BoardType, std::string> kPinNum = {
+      {jetson::BoardType::JETSON_AGX_XAVIER, "18"},
+      {jetson::BoardType::JETSON_NANO, "33"}};
+
+  // Board pin-numbering scheme
+  if (!gpio.SetMode(jetson::BoardMode::BOARD).second) {
+    std::cout << "[ERROR]: Set board mode failed! Can't reassign board mode."
+              << std::endl;
     return -1;
   }
 
   // Set pin as an output pin with optional initial state of HIGH
-  if(!gpio.Setup(kPinNum[gpio.GetBoardType()], jetson::Direction::OUT, jetson::Signal::HIGH))
-  {
-    std::cout << "[ERROR]: Gpio setup failed." << std::endl;
-    return -1;
-  }
+  // auto setup_result = gpio.Setup(kPinNum[gpio.GetBoardType()],
+  //                                jetson::Direction::OUT,
+  //                                jetson::Signal::HIGH);
+  // if (!setup_result.second) {
+  //   std::cout << "[ERROR]: Gpio setup failed with." << setup_result.first
+  //             << std::endl;
+  //   return -1;
+  // }
 
   // std::atomic_bool stop = false;
   // auto result = std::async([&](){
   //   // Create PWM signal
-  //   auto pwm_ctl = Gpio.CreatePWMController(kPinNum[Gpio.GetBoardType()], 10, 50);
-  //   int value = 100;
-  //   int increment = 5;
+  //   auto pwm_ctl = Gpio.CreatePWMController(kPinNum[Gpio.GetBoardType()], 10,
+  //   50); int value = 100; int increment = 5;
   //
   //   pwm_ctl.Start();
   //   #ifdef DEBUG
@@ -47,7 +59,7 @@ int main() {
   //     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   //     if (value >= 100) increment = -increment;
   //     if (value <= 0) increment = -increment;
-  //     value += increment;   
+  //     value += increment;
   //     pwm_ctl.ResetDutyCycle(value);
   //   }
   //   pwm_ctl.Stop();
@@ -56,7 +68,7 @@ int main() {
   //   #endif
   // }
   // );
-  // 
+  //
   // std::cout << "Press any key to stop: ";
   // auto c = std::getchar();
   // std::cout << c << std::endl;

@@ -5,8 +5,8 @@
  * @version 0.1
  * @date 2020-12-26
  *
- * @copyright 
- * 
+ * @copyright
+ *
  * Copyright (c) 2020, Caoyang Jiang
  * Copyright (c) 2012-2017 Ben Croston <ben@croston.org>.
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
@@ -30,11 +30,12 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-
 #include "gpio.h"
 #include <algorithm>
+#include <chrono>
 #include <experimental/filesystem>
 #include <fstream>
+#include <thread>
 #include "gpio_pin_data.h"
 
 #ifdef DEBUG
@@ -202,108 +203,167 @@ COMPATIBLE_DETECT_DONE:
   }
 
   auto create_gpio_id_name =
-      [&](int chip_relative_id, std::string gpio_chip_name) -> std::pair<int, std::string> {
+      [&](int chip_relative_id,
+          std::string gpio_chip_name) -> std::pair<int, std::string> {
     std::pair<int, std::string> id_name;
     id_name.first = gpio_chip_base[gpio_chip_name] + chip_relative_id;
     id_name.second = "gpio" + std::to_string(id_name.first);
     return id_name;
   };
 
-  
   // Final Step: gather all channel data
   auto& board_mode_data = data_[BoardMode::BOARD];
   for (const auto& x : kPinDefs) {
     auto pin_number_str = PinNumber2String(x.board_pin_num);
-    auto id_name = create_gpio_id_name(x.chip_gpio_pin_num,x.chip_gpio_sysfs_dir);
-    board_mode_data[pin_number_str] = ChannelInfo{pin_number_str,
-                                       gpio_chip_dirs[x.chip_gpio_sysfs_dir],
-                                       x.chip_gpio_pin_num,
-                                       id_name.first,
-                                       id_name.second,
-                                       x.chip_pwm_sysfs_dir,
-                                       x.chip_pwm_id};
+    auto id_name =
+        create_gpio_id_name(x.chip_gpio_pin_num, x.chip_gpio_sysfs_dir);
+    board_mode_data[pin_number_str] =
+        ChannelInfo{pin_number_str,      gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+                    x.chip_gpio_pin_num, id_name.first,
+                    id_name.second,      x.chip_pwm_sysfs_dir,
+                    x.chip_pwm_id};
   }
 
   auto& bcm_mode_data = data_[BoardMode::BCM];
   for (const auto& x : kPinDefs) {
     auto pin_number_str = PinNumber2String(x.bcm_pin_num);
-    auto id_name = create_gpio_id_name(x.chip_gpio_pin_num,x.chip_gpio_sysfs_dir);
-    bcm_mode_data[pin_number_str] = {pin_number_str,
-                                     gpio_chip_dirs[x.chip_gpio_sysfs_dir],
-                                     x.chip_gpio_pin_num,
-                                     id_name.first,
-                                     id_name.second,
-                                     x.chip_pwm_sysfs_dir,
-                                     x.chip_pwm_id};
+    auto id_name =
+        create_gpio_id_name(x.chip_gpio_pin_num, x.chip_gpio_sysfs_dir);
+    bcm_mode_data[pin_number_str] = {
+        pin_number_str,      gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+        x.chip_gpio_pin_num, id_name.first,
+        id_name.second,      x.chip_pwm_sysfs_dir,
+        x.chip_pwm_id};
   }
 
   auto& cvm_mode_data = data_[BoardMode::CVM];
   for (const auto& x : kPinDefs) {
-    auto id_name = create_gpio_id_name(x.chip_gpio_pin_num,x.chip_gpio_sysfs_dir);
-    cvm_mode_data[x.cvm_pin_name] = {x.cvm_pin_name,
-                                     gpio_chip_dirs[x.chip_gpio_sysfs_dir],
-                                     x.chip_gpio_pin_num,
-                                     id_name.first,
-                                     id_name.second,
-                                     x.chip_pwm_sysfs_dir,
-                                     x.chip_pwm_id};
+    auto id_name =
+        create_gpio_id_name(x.chip_gpio_pin_num, x.chip_gpio_sysfs_dir);
+    cvm_mode_data[x.cvm_pin_name] = {
+        x.cvm_pin_name,      gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+        x.chip_gpio_pin_num, id_name.first,
+        id_name.second,      x.chip_pwm_sysfs_dir,
+        x.chip_pwm_id};
   }
 
   auto& tegra_soc_mode_data = data_[BoardMode::TEGRA_SOC];
   for (const auto& x : kPinDefs) {
-    auto id_name = create_gpio_id_name(x.chip_gpio_pin_num,x.chip_gpio_sysfs_dir);
+    auto id_name =
+        create_gpio_id_name(x.chip_gpio_pin_num, x.chip_gpio_sysfs_dir);
     tegra_soc_mode_data[x.tegra_soc_pin_name] = {
-        x.tegra_soc_pin_name,
-        gpio_chip_dirs[x.chip_gpio_sysfs_dir],
-        x.chip_gpio_pin_num,
-        id_name.first,
-        id_name.second,
-        x.chip_pwm_sysfs_dir,
+        x.tegra_soc_pin_name, gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+        x.chip_gpio_pin_num,  id_name.first,
+        id_name.second,       x.chip_pwm_sysfs_dir,
         x.chip_pwm_id};
   }
 
   return true;
 }
 
-bool Gpio::SetMode(BoardMode mode) {
-  if(curr_board_mode_ != BoardMode::UNKNONW) {
-    return false;
+JResult Gpio::SetMode(BoardMode mode) {
+  if (curr_board_mode_ != BoardMode::UNKNONW) {
+    return JResult{"Mode already set", false};
   }
 
   curr_board_mode_ = mode;
-  return true;
+  return JOK;
 }
 
-bool Gpio::Setup(int pin_number, Direction direction, Signal initial_value) {
-  if(curr_board_mode_ == BoardMode::UNKNONW) {
-    return false;
+JResult Gpio::Setup(std::string channel, Direction direction,
+                    Signal initial_value, Pull pull) {
+  if (curr_board_mode_ == BoardMode::UNKNONW) {
+    return JResult{"Board mode not set", false};
   }
 
-  auto& channel_data = data_[curr_board_mode_];
+  // auto& channel_data = data_[curr_board_mode_];
 
-  // validation needed here
-  auto& channel_info = channel_data[std::to_string(pin_number)];
+  // need channel info validation here ...
+
+  // auto& channel_info = channel_data[channel];
 
 #ifdef DEBUG
-  std::cout << "[info]: setup channel " << channel_info.channel << std::endl;
-#endif 
+  // std::cout << "[info]: setup channel " << channel_info.channel << std::endl;
+#endif
 
-  return true;
+  if (direction == Direction::OUT && pull != Pull::OFF) {
+    std::cout << "[info]: Pull up/down is only valid for input signal."
+              << std::endl;
+  }
+
+  // need gpio validation here ...
+  auto result = ExportGpio(channel, direction);
+  if (result != JOK) {
+    return result;
+  }
+
+  auto SetDirection = [](std::ofstream& fs, Direction dir) {
+    fs.seekp(0, std::ios::beg);
+    if (dir == Direction::OUT)
+      fs.write("out", 3);
+    else
+      fs.write("in", 2);
+    fs.flush();
+  };
+
+  auto SetValue = [](std::fstream& fs, Signal s) {
+    fs.seekp(0, std::ios::beg);
+    if (s == Signal::HIGH)
+      fs.write("1", 1);
+    else
+      fs.write("0", 1);
+    fs.flush();
+  };
+
+  SetDirection(config_[channel].file_d, direction);
+
+  if (direction == Direction::OUT)
+    SetValue(config_[channel].file_v, initial_value);
+
+  return JOK;
 }
 
 void Gpio::Cleanup() {}
 
-BoardMode Gpio::GetBoardMode() const {
-  return curr_board_mode_;
+ChannelInfo Gpio::GetChannelInfo(BoardMode mode, std::string channel) const {
+  return data_.at(mode).at(channel);
 }
 
-BoardType Gpio::GetBoardType() const {
-  return type_;
+BoardMode Gpio::GetBoardMode() const { return curr_board_mode_; }
+
+BoardType Gpio::GetBoardType() const { return type_; }
+
+std::string Gpio::GetBoardName() const { return BoardType2String(type_); }
+
+JResult Gpio::ExportGpio(std::string channel, Direction direction) {
+  const auto& channel_info = data_[curr_board_mode_][channel];
+  config_[channel].channel_info = channel_info;
+  config_[channel].direction = direction;
+
+  // export channel by writing into export file
+  if (!fs::exists(kSysfs_Root + "/" + channel_info.gpio_name)) {
+    std::ofstream file(kSysfs_Root + "/");
+    if (!file) return JResult{"open \"Export\" file failed. ", false};
+    std::string gpio_num_str = std::to_string(channel_info.gpio);
+    file.write(gpio_num_str.c_str(), gpio_num_str.size());
+    file.close();
+
+    // It takes time for gpioxxx to show up
+    do {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::fstream check_fs(kSysfs_Root + "/" + channel_info.gpio_name + "/" +
+                            "direction");
+      if (check_fs) break;
+    } while (true);
+
+    config_[channel].file_d.open(kSysfs_Root + "/" + channel_info.gpio_name +
+                                 "/" + "direction");
+    config_[channel].file_v.open(kSysfs_Root + "/" + channel_info.gpio_name +
+                                 "/" + "value");
+  }
+  return JOK;
 }
 
-std::string Gpio::GetBoardName() const {
-  return BoardType2String(type_);
-}
-
+void Gpio::UnexportGpio(const ChannelInfo& info) {}
 
 }  // namespace jetson
