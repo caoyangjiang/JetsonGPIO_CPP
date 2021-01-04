@@ -5,8 +5,8 @@
  * @version 0.1
  * @date 2020-12-26
  *
- * @copyright 
- * 
+ * @copyright
+ *
  * Copyright (c) 2020, Caoyang Jiang
  * Copyright (c) 2012-2017 Ben Croston <ben@croston.org>.
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
@@ -30,15 +30,79 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <fstream>
+#include <string>
+#include "types.h"
+
 namespace jetson {
 class PWMController {
  public:
-  void Start();
-  void Stop();
-  void ResetFrequency(float frequency_hz);
-  void ResetDutyCycle(float duty_cycle_percent);
+  PWMController(ChannelInfo info, float frequency, float duty_cycle);
+  ~PWMController();
 
-  float GetFrequency() const;
-  float GetDutyCycle() const;
+  /**
+   * @brief Start outputing PWM signal on the designated channel.
+   *
+   */
+  void Start();
+
+  /**
+   * @brief Stop outputing PWM signal on the designated channel.
+   *
+   */
+  void Stop();
+
+  /**
+   * @brief Reset the PWM frequency. Frequency must be greater than 0.
+   *
+   * @param frequency Frequency in unit of Hz.
+   */
+  void ResetFrequency(double frequency);
+
+  /**
+   * @brief Reset the PWM duty cycle.
+   *
+   * @param duty_cycle A value in the range of (0,100).
+   */
+  void ResetDutyCycle(double duty_cycle);
+
+  /**
+   * @brief Get the channel of the PWM.
+   *
+   * @return channel id or name.
+   */
+  std::string GetChannel() const;
+
+  /**
+   * @brief Get the frequency.
+   *
+   * @return Frequency in unit of Hz.
+   */
+  double GetFrequency() const;
+
+  /**
+   * @brief Get the duty cycle.
+   *
+   * @return A value in the range of (0,100).
+   */
+  double GetDutyCycle() const;
+
+ private:
+  PWMController(const PWMController&) = delete;
+  PWMController(PWMController&&) = delete;
+
+ private:
+  void Export();
+  void Unexport();
+
+ private:
+  ChannelInfo info_;
+
+  std::ofstream f_duty_cycle_;
+  std::ofstream f_period_;
+  std::ofstream f_enable_;
+
+  double frequency_ = 50;   // 50 hz
+  double duty_cycle_ = 50;  // 50%
 };
 }  // namespace jetson

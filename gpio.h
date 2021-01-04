@@ -32,6 +32,8 @@
 
 #pragma once
 
+#include <list>
+#include <memory>
 #include <string>
 #include "pwm.h"
 #include "types.h"
@@ -56,10 +58,12 @@ class Gpio {
   BoardType GetBoardType() const;
   std::string GetBoardName() const;
 
-  PWMController CreatePWMController(int pin_number, float frequency_hz,
-                                    float duty_cycle_percent);
+  PWMController* CreatePWMController(std::string channel, float frequency_hz,
+                                     float duty_cycle);
 
  private:
+  JResult ExportPwm(std::string channel);
+  void UnexportPwm(std::string channel);
   JResult ExportGpio(std::string channel, Direction direction);
   void UnexportGpio(std::string channel);
 
@@ -68,6 +72,7 @@ class Gpio {
   ChannelData data_;
   BoardMode curr_board_mode_ = BoardMode::UNKNONW;
   ChannelConfigurations config_;
+  std::list<std::unique_ptr<PWMController>> pwms_;
 };
 
 }  // namespace jetson

@@ -191,7 +191,8 @@ COMPATIBLE_DETECT_DONE:
         auto path = p.path().filename().string();
         const std::string kPwmChipPrefix = "pwmchip";
         if (path.substr(0, kPwmChipPrefix.size()) == kPwmChipPrefix) {
-          pwm_dirs[*(pin_def.chip_pwm_sysfs_dir)] = pwm_chip_dir + "/" + path;
+          pwm_dirs[*(pin_def.chip_pwm_sysfs_dir)] =
+              pwm_chip_dir + "/pwm" + "/" + path;
 
 #ifdef DEBUG
           std::cout << "[info]: pwm detected at "
@@ -217,11 +218,16 @@ COMPATIBLE_DETECT_DONE:
     auto pin_number_str = PinNumber2String(x.board_pin_num);
     auto id_name =
         create_gpio_id_name(x.chip_gpio_pin_num, x.chip_gpio_sysfs_dir);
-    board_mode_data[pin_number_str] =
-        ChannelInfo{pin_number_str,      gpio_chip_dirs[x.chip_gpio_sysfs_dir],
-                    x.chip_gpio_pin_num, id_name.first,
-                    id_name.second,      x.chip_pwm_sysfs_dir,
-                    x.chip_pwm_id};
+    board_mode_data[pin_number_str] = ChannelInfo{
+        pin_number_str,
+        gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+        x.chip_gpio_pin_num,
+        id_name.first,
+        id_name.second,
+        x.chip_pwm_sysfs_dir == kNONE
+            ? kNONE
+            : std::optional<std::string>(pwm_dirs[*(x.chip_pwm_sysfs_dir)]),
+        x.chip_pwm_id};
   }
 
   auto& bcm_mode_data = data_[BoardMode::BCM];
@@ -230,9 +236,14 @@ COMPATIBLE_DETECT_DONE:
     auto id_name =
         create_gpio_id_name(x.chip_gpio_pin_num, x.chip_gpio_sysfs_dir);
     bcm_mode_data[pin_number_str] = {
-        pin_number_str,      gpio_chip_dirs[x.chip_gpio_sysfs_dir],
-        x.chip_gpio_pin_num, id_name.first,
-        id_name.second,      x.chip_pwm_sysfs_dir,
+        pin_number_str,
+        gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+        x.chip_gpio_pin_num,
+        id_name.first,
+        id_name.second,
+        x.chip_pwm_sysfs_dir == kNONE
+            ? kNONE
+            : std::optional<std::string>(pwm_dirs[*(x.chip_pwm_sysfs_dir)]),
         x.chip_pwm_id};
   }
 
@@ -241,9 +252,14 @@ COMPATIBLE_DETECT_DONE:
     auto id_name =
         create_gpio_id_name(x.chip_gpio_pin_num, x.chip_gpio_sysfs_dir);
     cvm_mode_data[x.cvm_pin_name] = {
-        x.cvm_pin_name,      gpio_chip_dirs[x.chip_gpio_sysfs_dir],
-        x.chip_gpio_pin_num, id_name.first,
-        id_name.second,      x.chip_pwm_sysfs_dir,
+        x.cvm_pin_name,
+        gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+        x.chip_gpio_pin_num,
+        id_name.first,
+        id_name.second,
+        x.chip_pwm_sysfs_dir == kNONE
+            ? kNONE
+            : std::optional<std::string>(pwm_dirs[*(x.chip_pwm_sysfs_dir)]),
         x.chip_pwm_id};
   }
 
@@ -252,9 +268,14 @@ COMPATIBLE_DETECT_DONE:
     auto id_name =
         create_gpio_id_name(x.chip_gpio_pin_num, x.chip_gpio_sysfs_dir);
     tegra_soc_mode_data[x.tegra_soc_pin_name] = {
-        x.tegra_soc_pin_name, gpio_chip_dirs[x.chip_gpio_sysfs_dir],
-        x.chip_gpio_pin_num,  id_name.first,
-        id_name.second,       x.chip_pwm_sysfs_dir,
+        x.tegra_soc_pin_name,
+        gpio_chip_dirs[x.chip_gpio_sysfs_dir],
+        x.chip_gpio_pin_num,
+        id_name.first,
+        id_name.second,
+        x.chip_pwm_sysfs_dir == kNONE
+            ? kNONE
+            : std::optional<std::string>(pwm_dirs[*(x.chip_pwm_sysfs_dir)]),
         x.chip_pwm_id};
   }
 
@@ -325,7 +346,11 @@ JResult Gpio::Setup(std::string channel, Direction direction,
 
 void Gpio::TearDown(std::string channel) { UnexportGpio(channel); }
 
-void Gpio::TearDown() {}
+void Gpio::TearDown() {
+  for (auto& config : config_) {
+    TearDown(config.first);
+  }
+}
 
 ChannelInfo Gpio::GetChannelInfo(BoardMode mode, std::string channel) const {
   return data_.at(mode).at(channel);
@@ -337,21 +362,45 @@ BoardType Gpio::GetBoardType() const { return type_; }
 
 std::string Gpio::GetBoardName() const { return BoardType2String(type_); }
 
+PWMController* Gpio::CreatePWMController(std::string channel, float frequency,
+                                         float duty_cycle) {
+  auto it = std::find_if(pwms_.begin(), pwms_.end(), [&](const auto& pwm) {
+    return pwm->GetChannel() == channel;
+  });
+
+  if (it != pwms_.end()) {
+    (*it)->ResetDutyCycle(duty_cycle);
+    (*it)->ResetFrequency(frequency);
+    return it->get();
+  }
+
+  // Pre-check. Ensure all preconditions for creating PWM are met.
+
+  // if (channel_info.pwm_chip_dir == std::nullopt) {
+  //   return JResult{"pwm chip dir do not exist for channel " + channel,
+  //   false};
+  // }
+
+  // if (channel_info.chip_pwm_id == std::nullopt) {
+  //   return JResult{"pwm chip id do not exist for channel " + channel, false};
+  // }
+
+  pwms_.emplace_back(std::make_unique<PWMController>(
+      data_[curr_board_mode_][channel], frequency, duty_cycle));
+  return pwms_.back().get();
+}
+
 JResult Gpio::ExportGpio(std::string channel, Direction direction) {
   const auto& channel_info = data_[curr_board_mode_][channel];
   config_[channel].channel_info = channel_info;
   config_[channel].direction = direction;
 
-  std::cout << static_cast<int>(curr_board_mode_) << channel << std::endl;
   const std::string kEXPORT_FILE = kSysfs_Root + "/export";
   const std::string kGPIO_DIR = kSysfs_Root + "/" + channel_info.gpio_name;
   const std::string kGPIO_DIRECTION_FILE =
       kSysfs_Root + "/" + channel_info.gpio_name + "/direction";
   const std::string kGPIO_VALUE_FILE =
       kSysfs_Root + "/" + channel_info.gpio_name + "/value";
-
-  std::cout << kGPIO_DIR << std::endl;
-  std::cout << kEXPORT_FILE << std::endl;
 
   // Export channel by writing into export file
   if (!fs::exists(kGPIO_DIR)) {

@@ -29,18 +29,21 @@ int main() {
     return -1;
   }
 
+  // Set pin as an PWM pin
+  auto create_pwm_result =
+      gpio.CreatePWMController(kPinNum[gpio.GetBoardType()], 50, 50);
+
   // Set pin as an output pin with optional initial state of HIGH
-  auto setup_result = gpio.Setup(kPinNum[gpio.GetBoardType()],
-                                 jetson::Direction::OUT, jetson::Signal::HIGH);
-  if (!setup_result.second) {
-    std::cout << "[ERROR]: Gpio setup failed with." << setup_result.first
-              << std::endl;
-    return -1;
-  }
+  // auto setup_result = gpio.Setup(kPinNum[gpio.GetBoardType()],
+  //                                jetson::Direction::OUT,
+  //                                jetson::Signal::HIGH);
+  // if (!setup_result.second) {
+  //   std::cout << "[ERROR]: Gpio setup failed with." << setup_result.first
+  //             << std::endl;
+  //   return -1;
+  // }
 
   std::this_thread::sleep_for(std::chrono::seconds(5));
-
-  gpio.TearDown(kPinNum[gpio.GetBoardType()]);
 
   // std::atomic_bool stop = false;
   // auto result = std::async([&](){
@@ -73,5 +76,6 @@ int main() {
   // result.get();
   // Gpio.Cleanup();
 
+  // gpio.TearDown();
   return 0;
 }
