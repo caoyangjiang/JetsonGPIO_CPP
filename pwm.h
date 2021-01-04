@@ -41,13 +41,13 @@ class PWMController {
   ~PWMController();
 
   /**
-   * @brief Start outputing PWM signal on the designated channel.
+   * @brief output PWM signal on the designated channel.
    *
    */
   void Start();
 
   /**
-   * @brief Stop outputing PWM signal on the designated channel.
+   * @brief stop outputing PWM signal on the designated channel.
    *
    */
   void Stop();

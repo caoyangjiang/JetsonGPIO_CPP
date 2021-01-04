@@ -30,8 +30,7 @@ int main() {
   }
 
   // Set pin as an PWM pin
-  auto create_pwm_result =
-      gpio.CreatePWMController(kPinNum[gpio.GetBoardType()], 50, 50);
+  auto pwm = gpio.CreatePWMController(kPinNum[gpio.GetBoardType()], 50, 50);
 
   // Set pin as an output pin with optional initial state of HIGH
   // auto setup_result = gpio.Setup(kPinNum[gpio.GetBoardType()],
@@ -43,7 +42,10 @@ int main() {
   //   return -1;
   // }
 
+  pwm->Start();
   std::this_thread::sleep_for(std::chrono::seconds(5));
+
+  pwm->Stop();
 
   // std::atomic_bool stop = false;
   // auto result = std::async([&](){
