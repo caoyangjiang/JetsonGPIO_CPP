@@ -2,6 +2,7 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <future>
 #include <iostream>
 #include <map>
 #include <thread>
@@ -29,9 +30,6 @@ int main() {
     return -1;
   }
 
-  // Set pin as an PWM pin
-  auto pwm = gpio.CreatePWMController(kPinNum[gpio.GetBoardType()], 50, 50);
-
   // Set pin as an output pin with optional initial state of HIGH
   // auto setup_result = gpio.Setup(kPinNum[gpio.GetBoardType()],
   //                                jetson::Direction::OUT,
@@ -41,42 +39,37 @@ int main() {
   //             << std::endl;
   //   return -1;
   // }
+  std::atomic_bool stop = false;
+  auto result = std::async([&]() {
+    // Create PWM signal
+    auto pwm = gpio.CreatePWMController(kPinNum[gpio.GetBoardType()], 50, 50);
+    double value = 7.5;
+    double increment = 0.5;
+    pwm->Start();
+#ifdef DEBUG
+    std::cout << "PWM started." << std::endl;
+#endif
+    while (!stop) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      if (value >= 10) increment = -increment;
+      if (value <= 5) increment = -increment;
+      value += increment;
+      pwm->ResetDutyCycle(value);
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    pwm->ResetDutyCycle(7.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    pwm->Stop();
+#ifdef DEBUG
+    std::cout << "PWM stopped." << std::endl;
+#endif
+  });
 
-  pwm->Start();
-  std::this_thread::sleep_for(std::chrono::seconds(5));
-
-  pwm->Stop();
-
-  // std::atomic_bool stop = false;
-  // auto result = std::async([&](){
-  //   // Create PWM signal
-  //   auto pwm_ctl = Gpio.CreatePWMController(kPinNum[Gpio.GetBoardType()], 10,
-  //   50); int value = 100; int increment = 5;
-  //
-  //   pwm_ctl.Start();
-  //   #ifdef DEBUG
-  //     std::cout << "PWM started." << std::endl
-  //   #endif
-  //   while(!stop) {
-  //     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  //     if (value >= 100) increment = -increment;
-  //     if (value <= 0) increment = -increment;
-  //     value += increment;
-  //     pwm_ctl.ResetDutyCycle(value);
-  //   }
-  //   pwm_ctl.Stop();
-  //   #ifdef DEBUG
-  //     std::cout << "PWM stopped." << std::endl
-  //   #endif
-  // }
-  // );
-  //
-  // std::cout << "Press any key to stop: ";
-  // auto c = std::getchar();
-  // std::cout << c << std::endl;
-  // stop = true;
-  // result.get();
-  // Gpio.Cleanup();
+  std::cout << "Press any key to stop: ";
+  auto c = std::getchar();
+  std::cout << c << std::endl;
+  stop = true;
+  result.get();
 
   // gpio.TearDown();
   return 0;

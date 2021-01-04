@@ -60,16 +60,15 @@ PWMController::PWMController(ChannelInfo info, float frequency,
 PWMController::~PWMController() { Unexport(); }
 
 void PWMController::Start() {
-  std::cout << frequency_ << " " << duty_cycle_ << std::endl;
   f_enable_.seekp(0, std::ios::beg);
   f_enable_ << "1";
-  f_enable_.flush();
+  f_enable_.flush();  // "must flush otherwise buffered."
 }
 
 void PWMController::Stop() {
   f_enable_.seekp(0, std::ios::beg);
   f_enable_ << "0";
-  f_enable_.flush();
+  f_enable_.flush();  // "must flush otherwise buffered."
 }
 
 void PWMController::ResetFrequency(double frequency) {
@@ -77,6 +76,8 @@ void PWMController::ResetFrequency(double frequency) {
     int64_t period = 1e9 / frequency;  // period in nano second
     f_period_.seekp(0, std::ios::beg);
     f_period_ << std::to_string(period);
+    f_period_.flush();  // "must flush otherwise buffered."
+
     frequency_ = frequency;
 
     // the duty cycle was set according to frequency
@@ -86,9 +87,12 @@ void PWMController::ResetFrequency(double frequency) {
 
 void PWMController::ResetDutyCycle(double duty_cycle) {
   if (duty_cycle >= 0 && duty_cycle <= 100) {
-    int64_t high = 1e7 * duty_cycle / frequency_;  // "high" in nano second
+    int64_t high = (1e7 / frequency_) * duty_cycle;  // "high" in nano second
+    std::cout << (1e7 / frequency_) << " " << high << std::endl;
     f_duty_cycle_.seekp(0, std::ios::beg);
     f_duty_cycle_ << std::to_string(high);
+    f_duty_cycle_.flush();  // "must flush otherwise buffered."
+
     duty_cycle_ = duty_cycle;
   }
 }
@@ -107,9 +111,6 @@ void PWMController::Export() {
   const std::string kPwm_Period_File = kPwm_Root_Dir + "/period";
   const std::string kPwm_Enable_File = kPwm_Root_Dir + "/enable";
 
-  std::cout << kPwm_Duty_Cycle_File << "\n"
-            << kPwm_Period_File << " \n"
-            << kPwm_Enable_File << std::endl;
   // write pwm chip id into export to create pwm root dir
   if (!fs::exists(kPwm_Root_Dir)) {
     std::ofstream file(kExport_File);
@@ -136,29 +137,25 @@ void PWMController::Export() {
     if (!pwm_created)
       throw std::runtime_error(
           "creating pwm failed after waiting for a second.");
-
-    // open duty cycle file
-    f_duty_cycle_ =
-        std::ofstream(kPwm_Duty_Cycle_File, std::ios::binary | std::ios::out);
-
-    // open period file
-    f_period_ =
-        std::ofstream(kPwm_Period_File, std::ios::binary | std::ios::out);
-
-    // open enable file
-    f_enable_ =
-        std::ofstream(kPwm_Enable_File, std::ios::binary | std::ios::out);
   }
+
+  // open duty cycle file
+  f_duty_cycle_ =
+      std::ofstream(kPwm_Duty_Cycle_File, std::ios::binary | std::ios::out);
+
+  // open period file
+  f_period_ = std::ofstream(kPwm_Period_File, std::ios::binary | std::ios::out);
+
+  // open enable file
+  f_enable_ = std::ofstream(kPwm_Enable_File, std::ios::binary | std::ios::out);
 }
 
 void PWMController::Unexport() {
-  std::cout << "here" << std::endl;
   f_enable_.close();
   f_period_.close();
   f_duty_cycle_.close();
 
   const std::string kUnexport_File = *(info_.pwm_chip_dir) + "/unexport";
-  std::cout << *(info_.chip_pwm_id) << std::endl;
   std::ofstream unexport_fs(kUnexport_File, std::ios::out | std::ios::binary);
   unexport_fs << *(info_.chip_pwm_id);
   unexport_fs.flush();
