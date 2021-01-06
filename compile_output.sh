@@ -1,0 +1,1 @@
+g++ -DDEBUG=on -O3 -std=c++17 simple_output.cpp binary_gpio.cpp gpio.cpp pwm.cpp -lstdc++fs -lpthread 

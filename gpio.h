@@ -35,6 +35,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include "binary_gpio.h"
 #include "pwm.h"
 #include "types.h"
 
@@ -42,36 +43,65 @@ namespace jetson {
 
 class Gpio {
  public:
+  using BinaryResult = JOutcome<BinaryController*>;
+  using PwmResult = JOutcome<PWMController*>;
+
+ public:
   bool Detect(std::string* error_message = nullptr);
-
+  // JResult Detect();
   JResult SetMode(BoardMode mode);
-  // JResult Setup(std::string channel, Direction direction,
-  //               Signal initial_value = Signal::LOW);
-  JResult Setup(std::string channel, Direction direction,
-                Signal initial_value = Signal::LOW, Pull pull = Pull::OFF);
-
-  void TearDown(std::string channel);
-  void TearDown();
 
   ChannelInfo GetChannelInfo(BoardMode mode, std::string channel) const;
   BoardMode GetBoardMode() const;
   BoardType GetBoardType() const;
   std::string GetBoardName() const;
 
-  PWMController* CreatePWMController(std::string channel, float frequency_hz,
-                                     float duty_cycle);
+  /**
+   * @brief Create a binary GPIO using RAII. The binary GPIO will be destroy
+   * automatically.
+   *
+   * @param channel The channel where the binary GPIO will be created. The name
+   * of the channel depends on the board mode.
+   * @param direction Set as input or output gpio.
+   * @param initial_value Set as high ro low.
+   * @param pull Only applicable when direction is input.
+   * @return BinaryResult Creation result.
+   */
+  BinaryResult CreateBinary(std::string channel, Direction direction,
+                            Signal initial_value = Signal::LOW,
+                            Pull pull = Pull::OFF);
 
- private:
-  JResult ExportPwm(std::string channel);
-  void UnexportPwm(std::string channel);
-  JResult ExportGpio(std::string channel, Direction direction);
-  void UnexportGpio(std::string channel);
+  /**
+   * @brief Destroy a binary gpio explicitly. No effect if given channel do not
+   * exist or was not created. This might be useful if a channel was used for
+   * binary GPIO and later wanted for PWM.
+   *
+   * @param channel the name of the channel.
+   */
+  void DestroyBinary(std::string channel);
+
+  /**
+   * @brief Destroy all binary gpio explicitly.
+   *
+   */
+  void DestroyBinary();
+
+  PwmResult CreatePwm(std::string channel, float frequency_hz,
+                      float duty_cycle);
+  void DestroyPwm(std::string channel);
+  void DestroyPwm();
 
  private:
   BoardType type_ = BoardType::UNKNOWN;
   ChannelData data_;
+
+  // BoardType detected_board_type_ = BoardType::UNKNOWN;
+  // ChannelData detected_channel_data_;
+
   BoardMode curr_board_mode_ = BoardMode::UNKNONW;
   ChannelConfigurations config_;
+
+  std::list<std::unique_ptr<BinaryController>> binaries_;
   std::list<std::unique_ptr<PWMController>> pwms_;
 };
 

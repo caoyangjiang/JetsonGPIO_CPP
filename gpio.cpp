@@ -291,67 +291,6 @@ JResult Gpio::SetMode(BoardMode mode) {
   return JOK;
 }
 
-JResult Gpio::Setup(std::string channel, Direction direction,
-                    Signal initial_value, Pull pull) {
-  if (curr_board_mode_ == BoardMode::UNKNONW) {
-    return JResult{"Board mode not set", false};
-  }
-
-  // auto& channel_data = data_[curr_board_mode_];
-
-  // need channel info validation here ...
-
-  // auto& channel_info = channel_data[channel];
-
-#ifdef DEBUG
-  // std::cout << "[info]: setup channel " << channel_info.channel << std::endl;
-#endif
-
-  if (direction == Direction::OUT && pull != Pull::OFF) {
-    std::cout << "[info]: Pull up/down is only valid for input signal."
-              << std::endl;
-  }
-
-  // need gpio validation here ...
-  auto result = ExportGpio(channel, direction);
-  if (result != JOK) {
-    return result;
-  }
-
-  auto SetDirection = [](std::ofstream& fs, Direction dir) {
-    fs.seekp(0, std::ios::beg);
-    if (dir == Direction::OUT)
-      fs.write("out", 3);
-    else
-      fs.write("in", 2);
-    fs.flush();
-  };
-
-  auto SetValue = [](std::fstream& fs, Signal s) {
-    fs.seekp(0, std::ios::beg);
-    if (s == Signal::HIGH)
-      fs.write("1", 1);
-    else
-      fs.write("0", 1);
-    fs.flush();
-  };
-
-  SetDirection(config_[channel].file_d, direction);
-
-  if (direction == Direction::OUT)
-    SetValue(config_[channel].file_v, initial_value);
-
-  return JOK;
-}
-
-void Gpio::TearDown(std::string channel) { UnexportGpio(channel); }
-
-void Gpio::TearDown() {
-  for (auto& config : config_) {
-    TearDown(config.first);
-  }
-}
-
 ChannelInfo Gpio::GetChannelInfo(BoardMode mode, std::string channel) const {
   return data_.at(mode).at(channel);
 }
@@ -362,8 +301,43 @@ BoardType Gpio::GetBoardType() const { return type_; }
 
 std::string Gpio::GetBoardName() const { return BoardType2String(type_); }
 
-PWMController* Gpio::CreatePWMController(std::string channel, float frequency,
-                                         float duty_cycle) {
+Gpio::BinaryResult Gpio::CreateBinary(std::string channel, Direction direction,
+                                      Signal initial_value, Pull pull) {
+  if (curr_board_mode_ == BoardMode::UNKNONW) {
+    return BinaryResult{"Board mode not set", nullptr};
+  }
+
+  if (direction == Direction::OUT && pull != Pull::OFF) {
+    return BinaryResult{"[info]: Pull up/down is only valid for input signal.",
+                        nullptr};
+  }
+
+  auto it = std::find_if(
+      binaries_.begin(), binaries_.end(),
+      [&](const auto& binary) { return binary->GetChannel() == channel; });
+
+  binaries_.emplace_back(std::make_unique<BinaryController>(
+      data_[curr_board_mode_][channel], direction, initial_value, pull));
+
+  return BinaryResult{"Ok", binaries_.back().get()};
+}
+
+void Gpio::DestroyBinary(std::string channel) {
+  auto it = std::find_if(
+      binaries_.begin(), binaries_.end(),
+      [&](const auto& binary) { return binary->GetChannel() == channel; });
+
+  binaries_.erase(it);
+}
+
+void Gpio::DestroyBinary() { binaries_.clear(); }
+
+Gpio::PwmResult Gpio::CreatePwm(std::string channel, float frequency,
+                                float duty_cycle) {
+  if (curr_board_mode_ == BoardMode::UNKNONW) {
+    return PwmResult{"Board mode not set", nullptr};
+  }
+
   auto it = std::find_if(pwms_.begin(), pwms_.end(), [&](const auto& pwm) {
     return pwm->GetChannel() == channel;
   });
@@ -371,7 +345,7 @@ PWMController* Gpio::CreatePWMController(std::string channel, float frequency,
   if (it != pwms_.end()) {
     (*it)->ResetDutyCycle(duty_cycle);
     (*it)->ResetFrequency(frequency);
-    return it->get();
+    return PwmResult{"Ok", it->get()};
   }
 
   // Pre-check. Ensure all preconditions for creating PWM are met.
@@ -387,70 +361,20 @@ PWMController* Gpio::CreatePWMController(std::string channel, float frequency,
 
   pwms_.emplace_back(std::make_unique<PWMController>(
       data_[curr_board_mode_][channel], frequency, duty_cycle));
-  return pwms_.back().get();
+  return PwmResult{"Ok", pwms_.back().get()};
 }
 
-JResult Gpio::ExportGpio(std::string channel, Direction direction) {
-  const auto& channel_info = data_[curr_board_mode_][channel];
-  config_[channel].channel_info = channel_info;
-  config_[channel].direction = direction;
+void Gpio::DestroyPwm(std::string channel) {
+  auto it = std::find_if(pwms_.begin(), pwms_.end(), [&](const auto& pwm) {
+    return pwm->GetChannel() == channel;
+  });
 
-  const std::string kEXPORT_FILE = kSysfs_Root + "/export";
-  const std::string kGPIO_DIR = kSysfs_Root + "/" + channel_info.gpio_name;
-  const std::string kGPIO_DIRECTION_FILE =
-      kSysfs_Root + "/" + channel_info.gpio_name + "/direction";
-  const std::string kGPIO_VALUE_FILE =
-      kSysfs_Root + "/" + channel_info.gpio_name + "/value";
-
-  // Export channel by writing into export file
-  if (!fs::exists(kGPIO_DIR)) {
-    std::ofstream file(kEXPORT_FILE);
-    if (!file) return JResult{"open \"Export\" file failed. ", false};
-    std::string gpio_num_str = std::to_string(channel_info.gpio);
-    file.write(gpio_num_str.c_str(), gpio_num_str.size());
-    file.close();
-
-    // It takes time for gpioxxx to show up
-    int safe_counter = 100;  // try up to one second
-    bool gpio_created = false;
-    do {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      std::fstream check_fs(kGPIO_DIRECTION_FILE);
-      if (check_fs) {
-        gpio_created = true;
-        break;
-      } else {
-        safe_counter--;
-      }
-    } while (safe_counter > 0);
-
-    if (!gpio_created) {
-      UnexportGpio(channel);
-      return JResult{"Gpio exported but gpio directory was not created.",
-                     false};
-    }
-
-    config_[channel].file_d.open(kGPIO_DIRECTION_FILE);
-    config_[channel].file_v.open(kGPIO_VALUE_FILE);
+  if (it != pwms_.end()) {
+    (*it)->Stop();
   }
 
-  return JOK;
+  pwms_.erase(it);
 }
 
-void Gpio::UnexportGpio(std::string channel) {
-  if (config_.find(channel) == config_.end()) {
-    return;
-  }
-
-  const auto& channel_info = data_[curr_board_mode_][channel];
-
-  config_[channel].file_d.close();
-  config_[channel].file_v.close();
-
-  std::ofstream file(kSysfs_Root + "/unexport");
-  std::string gpio_num_str = std::to_string(channel_info.gpio);
-  file.write(gpio_num_str.c_str(), gpio_num_str.size());
-  file.close();
-}
-
+void Gpio::DestroyPwm() { pwms_.clear(); }
 }  // namespace jetson

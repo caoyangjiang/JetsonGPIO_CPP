@@ -42,7 +42,8 @@ int main() {
   std::atomic_bool stop = false;
   auto result = std::async([&]() {
     // Create PWM signal
-    auto pwm = gpio.CreatePWMController(kPinNum[gpio.GetBoardType()], 50, 50);
+    auto pwm_result = gpio.CreatePwm(kPinNum[gpio.GetBoardType()], 50, 50);
+    auto pwm = pwm_result.second;
     double value = 7.5;
     double increment = 0.5;
     pwm->Start();
@@ -56,9 +57,8 @@ int main() {
       value += increment;
       pwm->ResetDutyCycle(value);
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     pwm->ResetDutyCycle(7.5f);
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     pwm->Stop();
 #ifdef DEBUG
     std::cout << "PWM stopped." << std::endl;

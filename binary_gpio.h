@@ -1,5 +1,5 @@
 /**
- * @file pwm.h
+ * @file binary_gpio.cpp
  * @author Caoyang Jiang (caoyangjiang@gmail.com)
  * @brief
  * @version 0.1
@@ -35,74 +35,68 @@
 #include "types.h"
 
 namespace jetson {
-class PWMController {
+class BinaryController {
  public:
-  PWMController(ChannelInfo info, float frequency, float duty_cycle);
-  ~PWMController();
+  BinaryController(ChannelInfo info, Direction direction,
+                   Signal initial_value = Signal::LOW, Pull pull = Pull::OFF);
+  ~BinaryController();
 
   /**
-   * @brief output PWM signal on the designated channel.
+   * @brief Any value >= 1 is considered as high. Value euqal to 0 is considered
+   * as low. All other values are ignored.
    *
+   * @param signal 0 or 1.
    */
-  void Start();
+  void Write(int signal);
 
   /**
-   * @brief stop outputing PWM signal on the designated channel.
+   * @brief Output a signal.
    *
+   * @param signal high or low
    */
-  void Stop();
+  void Write2(Signal signal);
 
   /**
-   * @brief Reset the PWM frequency. Frequency must be greater than 0.
+   * @brief Read a input signal.
    *
-   * @param frequency Frequency in unit of Hz.
+   * @return 0 or 1.
    */
-  void ResetFrequency(double frequency);
+  int Read();
 
   /**
-   * @brief Reset the PWM duty cycle.
+   * @brief Read from the input signal.
    *
-   * @param duty_cycle A value in the range of (0,100).
+   * @return high or low.
    */
-  void ResetDutyCycle(double duty_cycle);
+  Signal Read2();
 
   /**
-   * @brief Get the channel of the PWM.
+   * @brief Get the direction
    *
-   * @return channel id or name.
+   * @return direction
+   */
+  Direction GetDirection() const;
+
+  /**
+   * @brief Get the channel name
+   *
+   * @return channel name
    */
   std::string GetChannel() const;
 
-  /**
-   * @brief Get the frequency.
-   *
-   * @return Frequency in unit of Hz.
-   */
-  double GetFrequency() const;
-
-  /**
-   * @brief Get the duty cycle.
-   *
-   * @return A value in the range of (0,100).
-   */
-  double GetDutyCycle() const;
-
  private:
-  PWMController(const PWMController&) = delete;
-  PWMController(PWMController&&) = delete;
+  BinaryController(const BinaryController&) = delete;
+  BinaryController(BinaryController&&) = delete;
 
  private:
   void Export();
   void Unexport();
+  void SetDirection();
 
  private:
   const ChannelInfo info_;
-
-  std::ofstream f_duty_cycle_;
-  std::ofstream f_period_;
-  std::ofstream f_enable_;
-
-  double frequency_ = 50;   // 50 hz
-  double duty_cycle_ = 50;  // 50%
+  const Direction direction_;
+  std::ofstream f_direction_;
+  std::fstream f_value_;
 };
 }  // namespace jetson

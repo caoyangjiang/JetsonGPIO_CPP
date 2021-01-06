@@ -41,8 +41,8 @@
 namespace jetson {
 
 template <typename T>
-using Outcome = std::pair<std::string, T>;
-using JResult = Outcome<bool>;
+using JOutcome = std::pair<std::string, T>;
+using JResult = JOutcome<bool>;
 static const JResult JOK = JResult{"No Error", true};
 
 static const int kPull_Offset = 20;
@@ -75,6 +75,10 @@ enum class BoardType {
   JETSON_XAVIER,
   JETSON_AGX_XAVIER,
   JETSON_NANO,
+  JETSON_TX1,
+  JETSON_TX2,
+  JETSON_NX_XAVIER,
+  CLARA_AGX_XAVIER,
 };
 
 enum class BoardMode {
@@ -85,9 +89,9 @@ enum class BoardMode {
   TEGRA_SOC = 1001,
 };
 
-enum class Direction { OUT = 0, IN = 1 };
+enum class Direction { OUT = 0, IN = 1, UNKNOWN };
 
-enum class Signal { LOW = 0, HIGH = 1 };
+enum class Signal { LOW = 0, HIGH = 1, UNKNOWN };
 
 enum class Pull {
   OFF = 0 + kPull_Offset,
@@ -138,26 +142,5 @@ constexpr inline const char* BoardType2String(BoardType type) {
 inline std::string PinNumber2String(int pin_num) {
   return std::to_string(pin_num);
 }
-
-// class BoardPinDef {
-//  public:
-//   explicit BoardPinDef(BoardType type);
-
-//   int GetChipGpioPinNumber() const;
-//   std::string GetChipGpioSysfsDir() const;
-//   int GetBoardPinNumber() const;
-//   int GetBcmPinNumber() const;
-//   const std::string& GetCvmPinName() const;
-//   const std::string& GetTegraSocPinName() const;
-
-//   bool HaveChipPwmSysfsDir() const;
-//   bool HaveChipPwmId() const;
-
-//   const std::string& GetChipPwmSysfsDir() const;
-//   const std::string& GetChipPwmId() const;
-
-//  private:
-//   BoardType board_type_;
-// };
 
 }  // namespace jetson

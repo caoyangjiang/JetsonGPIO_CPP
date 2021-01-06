@@ -88,7 +88,6 @@ void PWMController::ResetFrequency(double frequency) {
 void PWMController::ResetDutyCycle(double duty_cycle) {
   if (duty_cycle >= 0 && duty_cycle <= 100) {
     int64_t high = (1e7 / frequency_) * duty_cycle;  // "high" in nano second
-    std::cout << (1e7 / frequency_) << " " << high << std::endl;
     f_duty_cycle_.seekp(0, std::ios::beg);
     f_duty_cycle_ << std::to_string(high);
     f_duty_cycle_.flush();  // "must flush otherwise buffered."
