@@ -47,13 +47,51 @@ class Gpio {
   using PwmResult = JOutcome<PWMController*>;
 
  public:
-  bool Detect(std::string* error_message = nullptr);
-  // JResult Detect();
+  /**
+   * @brief Detect board type and gather board information
+   *
+   * @return The result of board detection
+   */
+  JResult Detect();
+
+  /**
+   * @brief Set the board mode. Once the board mode is set, it can't be changed
+   * anymore unless GPIO object is destroyed.
+   *
+   * @param mode The board mode
+   * @return The result of setting board mode
+   */
   JResult SetMode(BoardMode mode);
 
+  /**
+   * @brief Get the channel information. Use tools in  utils.h to simplify
+   * printing.
+   *
+   * @param mode The mode of the board
+   * @param channel The channel where the information will be retrieved.
+   * @return channel information
+   */
   ChannelInfo GetChannelInfo(BoardMode mode, std::string channel) const;
-  BoardMode GetBoardMode() const;
+
+  /**
+   * @brief Get the detected board type
+   *
+   * @return Type of the board
+   */
   BoardType GetBoardType() const;
+
+  /**
+   * @brief Get the board mode
+   *
+   * @return Mode of the board
+   */
+  BoardMode GetBoardMode() const;
+
+  /**
+   * @brief Get the human readable board name
+   *
+   * @return name of the detected board
+   */
   std::string GetBoardName() const;
 
   /**
@@ -65,7 +103,7 @@ class Gpio {
    * @param direction Set as input or output gpio.
    * @param initial_value Set as high ro low.
    * @param pull Only applicable when direction is input.
-   * @return BinaryResult Creation result.
+   * @return Creation result.
    */
   BinaryResult CreateBinary(std::string channel, Direction direction,
                             Signal initial_value = Signal::LOW,
@@ -82,24 +120,39 @@ class Gpio {
 
   /**
    * @brief Destroy all binary gpio explicitly.
-   *
    */
   void DestroyBinary();
 
+  /**
+   * @brief On success, create a pwm controller. Note this uses RAII and does
+   * not require explicit destroy for memory safety.
+   *
+   * @param channel The channel where pwm will be created.
+   * @param frequency_hz Frequency of the pwm signal.
+   * @param duty_cycle Duty cycle of the pmw signal. The valid range is (0,100)
+   * @return The result of pwm controller creation.
+   */
   PwmResult CreatePwm(std::string channel, float frequency_hz,
                       float duty_cycle);
+
+  /**
+   * @brief Destroy a pwm controller explicitly. No effect if given channel do
+   * not exist or was not created. This might be useful if a channel was used
+   * for PWM and later wanted for gpio.
+   *
+   * @param channel the name of the channel.
+   */
   void DestroyPwm(std::string channel);
+
+  /**
+   * @brief Destroy all pwm controller explicitly.
+   */
   void DestroyPwm();
 
  private:
   BoardType type_ = BoardType::UNKNOWN;
   ChannelData data_;
-
-  // BoardType detected_board_type_ = BoardType::UNKNOWN;
-  // ChannelData detected_channel_data_;
-
   BoardMode curr_board_mode_ = BoardMode::UNKNONW;
-  ChannelConfigurations config_;
 
   std::list<std::unique_ptr<BinaryController>> binaries_;
   std::list<std::unique_ptr<PWMController>> pwms_;

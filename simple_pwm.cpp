@@ -11,8 +11,10 @@
 
 int main() {
   jetson::Gpio gpio;
-  if (!gpio.Detect()) {
-    std::cout << "[ERROR]: Board detection failed! Can't find board type."
+
+  auto detect_result = gpio.Detect();
+  if (!detect_result.second) {
+    std::cout << "[ERROR]: Board detection failed with " << detect_result.first
               << std::endl;
     return -1;
   }

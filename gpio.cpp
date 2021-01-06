@@ -46,16 +46,16 @@ namespace fs = std::experimental::filesystem;
 
 namespace jetson {
 
-bool Gpio::Detect(std::string* error_message) {
+JResult Gpio::Detect() {
   type_ = jetson::BoardType::UNKNOWN;
 
   const std::string kCompatsPath = "/proc/device-tree/compatible";
   const std::string kIdsPath = "/proc/device-tree/chosen/plugin-manager/ids";
 
   std::ifstream compats_file(kCompatsPath, std::ios::in);
-  if (error_message != nullptr && !compats_file.is_open()) {
-    *error_message = "failed to open compatible file at " + kCompatsPath;
-    return false;
+  if (!compats_file.is_open()) {
+    auto error_message = "failed to open compatible file at " + kCompatsPath;
+    return JResult{error_message, false};
   }
 
   std::vector<std::string> detected_compatibles;
@@ -82,18 +82,18 @@ bool Gpio::Detect(std::string* error_message) {
   }
 
 COMPATIBLE_DETECT_DONE:
-  if (error_message != nullptr && type_ == jetson::BoardType::UNKNOWN) {
-    *error_message = "failed to deterime board type from compatibles.";
-    return false;
+  if (type_ == jetson::BoardType::UNKNOWN) {
+    auto error_message = "failed to deterime board type from compatibles.";
+    return JResult{error_message, false};
   }
 
   // board type determined.
   const auto& kPinDefs = kBoardPins.at(type_);
 
   // 3. Find a matching carrier board
-  if (error_message != nullptr && !fs::exists(kIdsPath)) {
-    *error_message = "ids path " + kIdsPath + " do not exist.";
-    return false;
+  if (!fs::exists(kIdsPath)) {
+    auto error_message = "ids path " + kIdsPath + " do not exist.";
+    return JResult{error_message, false};
   }
 
   auto carried_board_id =
@@ -139,9 +139,10 @@ COMPATIBLE_DETECT_DONE:
         }
       }
 
-      if (error_message != nullptr && gpio_chip_dir == "") {
-        *error_message = "cannot find GPIO chip " + pin_def.chip_gpio_sysfs_dir;
-        return false;
+      if (gpio_chip_dir == "") {
+        auto error_message =
+            "cannot find GPIO chip " + pin_def.chip_gpio_sysfs_dir;
+        return JResult{error_message, false};
       }
 
       gpio_chip_dirs[pin_def.chip_gpio_sysfs_dir] = gpio_chip_dir;
@@ -279,7 +280,7 @@ COMPATIBLE_DETECT_DONE:
         x.chip_pwm_id};
   }
 
-  return true;
+  return JOK;
 }
 
 JResult Gpio::SetMode(BoardMode mode) {
