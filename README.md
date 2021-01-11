@@ -6,38 +6,40 @@ The project is mainly a C++ replication of the python NVIDIA/jetson-gpio reposit
 
 ## Prerequiste
 
-*. Compile on the actual Jetson board with the JetPack 4.4.1 or above. Cross compilation is not tested.
+- Compile on the actual Jetson board with the JetPack 4.4.1 or above. Cross compilation is not tested.
 
-*. Configure PWM functionality by running the python script located at /opt/nvidia/jetsion-io/jetsion-io.py. 
+- Configure PWM functionality by running the python script located at /opt/nvidia/jetsion-io/jetsion-io.py. 
 
-*. The easiest way to verify PWM signals is hooking it up to an oscilloscope. However, a simple LED + Resistor circuit will do.
+- The easiest way to verify PWM signals is hooking it up to an oscilloscope. However, a simple LED + Resistor circuit will do.
 
-*. The easiest way to verify binary GPIOs is to create a simple LED + Resistor circuit.
+- The easiest way to verify binary GPIOs is to create a simple LED + Resistor circuit.
 
 ## Attention
 
 The PWM functionality is only tested on few selected channels using Jetson Agx Xavier and Jetson Nano (2G) boards. You are more than welcomed to test on other channels/boards and give me feedbacks.
 
-## Compilation
+## Compilation examples
 
 ~~~
-sh compile.sh
+sh compile_pwm.sh
+sh compile_output.sh
 ~~~
 
 ## Binary GPIO Usage
 ```cpp
 #include "gpio.h"
 
-GPIO::Instance()->Detect();
-GPIO:Instance()->SetBoardMode(jetson::BoardMode::BOARD);
+jetson::GPIO gpio;
+gpio.Detect();
+gpio.SetBoardMode(jetson::BoardMode::BOARD);
 
-auto s1 = GPIO::Instance()->CreateBinary("18", jetson::Direction::OUT);
+auto s1 = gpio.CreateBinary("18", jetson::Direction::OUT);
 s1->Write(0);
 s1->Write(1);
 s1->Write2(jetson::Signal::HIGH);
 s1->Write2(jetson::Signal::LOW);
 
-auto s2 = GPIO::Instance()->CreateBinary("19", jetson::Direction::IN);
+auto s2 = gpio.CreateBinary("19", jetson::Direction::IN);
 auto value = s2->Read();
 auto signal = s2->Read2()
 ```
@@ -47,10 +49,11 @@ auto signal = s2->Read2()
 
 #include "gpio.h"
 
-GPIO::Instance()->Detect();
-GPIO:Instance()->SetBoardMode(jetson::BoardMode::BOARD);
+jetson::GPIO gpio;
+gpio.Detect();
+gpio.SetBoardMode(jetson::BoardMode::BOARD);
 
-auto pwm1 = GPIO::Instance()->CreatePwm("18", 50, 50);
+auto pwm1 = gpio.CreatePwm("18", 50, 50);
 pwm1->Start();
 pwm1->ResetFrequency(100);
 pwm1->ResetDutyCycle(20);
@@ -62,9 +65,10 @@ pwm1->Stop();
 #include "gpio.h"
 #include "utils.h"
 
-GPIO::Instance()->Detect();
-GPIO::Instance()->SetBoardMode(jetson::BoardMode::BOARD);
-jetson::PrintChannelInfo(GPIO::Instance()->GetChannelInfo(jetson::BoardMode::BOARD, "18"));
+jetson::GPIO gpio;
+gpio.Detect();
+gpio.SetBoardMode(jetson::BoardMode::BOARD);
+jetson::PrintChannelInfo(gpio.GetChannelInfo(jetson::BoardMode::BOARD, "18"));
 
 ```
 
