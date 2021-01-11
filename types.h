@@ -102,7 +102,7 @@ enum class Pull {
 enum class TriggerEdge {
   NONE = 0,
   RISING = 1 + kEdge_Offset,
-  FAILING = 2 + kEdge_Offset,
+  FALLING = 2 + kEdge_Offset,
   BOTH = 3 + kEdge_Offset,
 };
 
@@ -112,7 +112,7 @@ static constexpr const char* TriggerEdge2String(TriggerEdge edge) {
       return "none";
     case TriggerEdge::RISING:
       return "rising";
-    case TriggerEdge::FAILING:
+    case TriggerEdge::FALLING:
       return "failing";
     case TriggerEdge::BOTH:
       return "both";

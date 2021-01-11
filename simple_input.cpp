@@ -42,7 +42,21 @@ int main() {
     return -1;
   }
 
-  setup_result.second->SetEdgeTriggerType(jetson::TriggerEdge::BOTH);
+  auto printer0 = [](int value) {
+    std::cout << "print on both: " << value << std::endl;
+  };
+
+  auto printer1 = [](int value) {
+    std::cout << "print on high: " << value << std::endl;
+  };
+
+  auto printer2 = [](int value) {
+    std::cout << "print on low: " << value << std::endl;
+  };
+
+  setup_result.second->RegisterCallback(jetson::TriggerEdge::BOTH, printer0);
+  setup_result.second->RegisterCallback(jetson::TriggerEdge::RISING, printer1);
+  setup_result.second->RegisterCallback(jetson::TriggerEdge::FALLING, printer2);
 
   std::cout << "Press q for quit" << std::endl;
 

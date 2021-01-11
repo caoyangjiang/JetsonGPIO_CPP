@@ -41,7 +41,7 @@
 namespace jetson {
 class BinaryController {
  public:
-  using TriggerCallBack = std::function<void(void)>;
+  using TriggerCallBack = std::function<void(int)>;
 
  public:
   BinaryController(ChannelInfo info, Direction direction,
@@ -91,9 +91,13 @@ class BinaryController {
    */
   std::string GetChannel() const;
 
-  void AddEdgeTriggerCallBack(TriggerCallBack func);
-
-  void SetEdgeTriggerType(TriggerEdge edge);
+  /**
+   * @brief Register a call back for an edge event.
+   *
+   * @param edge the event for which call back is triggered.
+   * @param callback the register callback for the given edge event.
+   */
+  void RegisterCallback(TriggerEdge edge, TriggerCallBack callback);
 
  private:
   BinaryController(const BinaryController &) = delete;
@@ -111,6 +115,6 @@ class BinaryController {
   std::ofstream f_direction_;
   std::fstream f_value_;
   std::future<void> monitor_;
-  std::list<TriggerCallBack> callbacks_;
+  std::map<TriggerEdge, std::list<TriggerCallBack>> callbacks_;
 };
 }  // namespace jetson

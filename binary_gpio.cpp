@@ -38,8 +38,10 @@
 #include <experimental/filesystem>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <string>
 #include <thread>
+#include <utility>
 #include "limits.h"
 #include "types.h"
 
@@ -97,6 +99,8 @@ void BinaryController::Export() {
       kSysfs_Root + "/" + info_.gpio_name + "/direction";
   const std::string kGPIO_VALUE_FILE =
       kSysfs_Root + "/" + info_.gpio_name + "/value";
+  const std::string kGPIO_EDGE_FILE =
+      kSysfs_Root + "/" + info_.gpio_name + "/edge";
 
   // Export channel by writing into export file
   if (!fs::exists(kGPIO_DIR)) {
@@ -128,6 +132,12 @@ void BinaryController::Export() {
 
     f_direction_.open(kGPIO_DIRECTION_FILE);
     f_value_.open(kGPIO_VALUE_FILE);
+
+    // always trigger on both edge
+    std::ofstream f_edge(kGPIO_EDGE_FILE, std::ios::out | std::ios::binary);
+    std::string edge_name("both");
+    f_edge.write(edge_name.c_str(), edge_name.size());
+    f_edge.close();
   }
 }
 
@@ -154,17 +164,9 @@ Direction BinaryController::GetDirection() const { return direction_; }
 
 std::string BinaryController::GetChannel() const { return info_.channel; }
 
-void BinaryController::AddEdgeTriggerCallBack(TriggerCallBack func) {
-  callbacks_.emplace_back(std::move(func));
-}
-
-void BinaryController::SetEdgeTriggerType(TriggerEdge edge) {
-  const std::string kGPIO_EDGE_FILE =
-      kSysfs_Root + "/" + info_.gpio_name + "/edge";
-  std::ofstream f_edge(kGPIO_EDGE_FILE, std::ios::out | std::ios::binary);
-  std::string edge_name(TriggerEdge2String(edge));
-  f_edge.write(edge_name.c_str(), edge_name.size());
-  f_edge.close();
+void BinaryController::RegisterCallback(TriggerEdge edge,
+                                        TriggerCallBack callback) {
+  callbacks_[edge].emplace_back(std::move(callback));
 }
 
 void BinaryController::EdgeMonitor() {
@@ -194,6 +196,19 @@ void BinaryController::EdgeMonitor() {
 
       if (event->mask & IN_MODIFY) {
         auto value = Read();
+        for (auto &cb : callbacks_[TriggerEdge::BOTH]) {
+          std::invoke(cb, value);
+        }
+
+        if (value == 1) {
+          for (auto &cb : callbacks_[TriggerEdge::RISING]) {
+            std::invoke(cb, value);
+          }
+        } else {
+          for (auto &cb : callbacks_[TriggerEdge::FALLING]) {
+            std::invoke(cb, value);
+          }
+        }
       }
 
       i += kEvent_Size + event->len;
