@@ -30,12 +30,19 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <atomic>
 #include <fstream>
+#include <future>
+#include <list>
+#include <map>
 #include <string>
 #include "types.h"
 
 namespace jetson {
 class BinaryController {
+ public:
+  using TriggerCallBack = std::function<void(void)>;
+
  public:
   BinaryController(ChannelInfo info, Direction direction,
                    Signal initial_value = Signal::LOW, Pull pull = Pull::OFF);
@@ -84,19 +91,26 @@ class BinaryController {
    */
   std::string GetChannel() const;
 
+  void AddEdgeTriggerCallBack(TriggerCallBack func);
+
+  void SetEdgeTriggerType(TriggerEdge edge);
+
  private:
-  BinaryController(const BinaryController&) = delete;
-  BinaryController(BinaryController&&) = delete;
+  BinaryController(const BinaryController &) = delete;
+  BinaryController(BinaryController &&) = delete;
 
  private:
   void Export();
   void Unexport();
   void SetDirection();
+  void EdgeMonitor();
 
  private:
   const ChannelInfo info_;
   const Direction direction_;
   std::ofstream f_direction_;
   std::fstream f_value_;
+  std::future<void> monitor_;
+  std::list<TriggerCallBack> callbacks_;
 };
 }  // namespace jetson

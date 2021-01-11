@@ -100,10 +100,24 @@ enum class Pull {
 };
 
 enum class TriggerEdge {
+  NONE = 0,
   RISING = 1 + kEdge_Offset,
   FAILING = 2 + kEdge_Offset,
   BOTH = 3 + kEdge_Offset,
 };
+
+static constexpr const char* TriggerEdge2String(TriggerEdge edge) {
+  switch (edge) {
+    case TriggerEdge::NONE:
+      return "none";
+    case TriggerEdge::RISING:
+      return "rising";
+    case TriggerEdge::FAILING:
+      return "failing";
+    case TriggerEdge::BOTH:
+      return "both";
+  }
+}
 
 struct ChannelInfo {
   std::string channel;

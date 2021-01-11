@@ -47,15 +47,21 @@ int main() {
     auto pwm_result = gpio.CreatePwm(kPinNum[gpio.GetBoardType()], 50, 50);
     auto pwm = pwm_result.second;
     double value = 7.5;
-    double increment = 0.5;
+    double increment = 0.1;
     pwm->Start();
 #ifdef DEBUG
     std::cout << "PWM started." << std::endl;
 #endif
     while (!stop) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      if (value >= 10) increment = -increment;
-      if (value <= 5) increment = -increment;
+      std::this_thread::sleep_for(std::chrono::milliseconds(6));
+      if (value >= 9.5) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        increment = -increment;
+      }
+      if (value <= 5.5) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        increment = -increment;
+      }
       value += increment;
       pwm->ResetDutyCycle(value);
     }

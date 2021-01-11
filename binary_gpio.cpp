@@ -31,10 +31,16 @@
  */
 
 #include "binary_gpio.h"
+#include <sys/inotify.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <chrono>
 #include <experimental/filesystem>
+#include <functional>
+#include <iostream>
 #include <string>
 #include <thread>
+#include "limits.h"
 #include "types.h"
 
 namespace fs = std::experimental::filesystem;
@@ -46,12 +52,14 @@ BinaryController::BinaryController(ChannelInfo info, Direction direction,
     : info_(info), direction_(direction) {
   Export();
   SetDirection();
+  monitor_ = std::async(std::bind(&BinaryController::EdgeMonitor, this));
   if (direction_ == Direction::OUT) Write2(signal);
 }
 
 BinaryController::~BinaryController() {
   if (direction_ == Direction::OUT) Write2(Signal::LOW);
   Unexport();
+  monitor_.get();
 }
 
 void BinaryController::Write(int s) {
@@ -74,8 +82,9 @@ int BinaryController::Read() { return Read2() == Signal::LOW ? 0 : 1; }
 Signal BinaryController::Read2() {
   if (direction_ == Direction::IN) {
     char value = 0;
+    f_value_.seekg(0, std::ios::beg);
     f_value_.read(&value, 1);
-    return value == 0 ? Signal::LOW : Signal::HIGH;
+    return (value - '0') == 0 ? Signal::LOW : Signal::HIGH;
   }
 
   return Signal::UNKNOWN;
@@ -144,5 +153,55 @@ void BinaryController::SetDirection() {
 Direction BinaryController::GetDirection() const { return direction_; }
 
 std::string BinaryController::GetChannel() const { return info_.channel; }
+
+void BinaryController::AddEdgeTriggerCallBack(TriggerCallBack func) {
+  callbacks_.emplace_back(std::move(func));
+}
+
+void BinaryController::SetEdgeTriggerType(TriggerEdge edge) {
+  const std::string kGPIO_EDGE_FILE =
+      kSysfs_Root + "/" + info_.gpio_name + "/edge";
+  std::ofstream f_edge(kGPIO_EDGE_FILE, std::ios::out | std::ios::binary);
+  std::string edge_name(TriggerEdge2String(edge));
+  f_edge.write(edge_name.c_str(), edge_name.size());
+  f_edge.close();
+}
+
+void BinaryController::EdgeMonitor() {
+  int inotify = inotify_init();
+
+  const std::string kGPIO_VALUE_FILE =
+      kSysfs_Root + "/" + info_.gpio_name + "/value";
+  int watch = inotify_add_watch(inotify, kGPIO_VALUE_FILE.c_str(),
+                                IN_MODIFY | IN_CLOSE_WRITE);
+
+  bool delete_detected = false;
+  while (!delete_detected) {
+    constexpr int kEvent_Size = sizeof(struct inotify_event);
+    constexpr int kEvent_Buffer_Len = (kEvent_Size + NAME_MAX + 1) * 8;
+    char buffer[kEvent_Buffer_Len];
+    auto length = read(inotify, buffer, kEvent_Buffer_Len);
+
+    int i = 0;
+    while (i < length) {
+      struct inotify_event *event =
+          reinterpret_cast<struct inotify_event *>(&buffer + i);
+
+      if (event->mask & IN_CLOSE_WRITE) {
+        delete_detected = true;
+        break;
+      }
+
+      if (event->mask & IN_MODIFY) {
+        auto value = Read();
+      }
+
+      i += kEvent_Size + event->len;
+    }
+  }
+
+  inotify_rm_watch(inotify, watch);
+  close(inotify);
+}
 
 }  // namespace jetson
